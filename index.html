@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+
+	<title>Testing</title>
+	<meta name="description" content="Nacho outsourcing project">
+	<meta name="author" content="H.C. Moon">
+
+	<link rel="stylesheet" type="text/css" href="css/main.css">
+</head>
+
+<body>
+	<h1>Testing automatic settlement program</h1>
+	<hr>
+	<h3>How To Use:</h3>
+	<ol>
+		<li><span>Upload an excel file having appropriate format.</span></li>
+		<li><span>Push the <b>Process</b> button.</span></li>
+		<li><span>If there is no error, you can download complete excel file by push <b>Download</b> button.</span></li>
+	</ol>
+	<hr>
+	<div class="container">
+		[STATUS] : 
+		<span class="status">WAIT</span> <span class="dot"></span>
+	</div>
+	<div class="container">
+		<label for="excel">Excel Input :</label>
+		<input type="file" id="excel" class="fileUpload">
+
+		<input type="button" value="Process" class="button process">
+		<input type="button" value="Download" class="button download" disabled>
+
+
+	</div>
+
+	<script type="text/javascript" src="js/main.js"></script>
+</body>
+</html>
