@@ -81,9 +81,13 @@ function fileValidation(file) {
 }
 
 function startProcessing(intervalID) {
-	let parserFunc = parserDeterminant('INIPAY');
+	// Parse
+	for (let payType of PAYTYPE) {
+		if (payType == 'ERROR') continue;
 
-	parserFunc(wb);
+		let parserFunc = parserDeterminant(payType);
+		parserFunc(wb);
+	}
 
 	setTimeout(
 		function () { 

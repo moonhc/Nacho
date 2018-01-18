@@ -58,14 +58,15 @@ function parserError(sheetName, cellPos, errorType) {
 }
 
 function parserInipay(wb) {
-	let wsInipay = wb.Sheets['이니시스'];
-	let rowArr = XLSX.utils.sheet_to_json(wsInipay);
+	let ws = wb.Sheets['이니시스'];
+	let rowArr = XLSX.utils.sheet_to_json(ws);
 	let rowNum = 1;
 	for (let row of rowArr) {
+		rowNum++;
 		let id = row['주문번호'];
 
 		if (id in rawData) { 
-			parseError('이니시스', {r: rowNum, c: '주문번호'}, 'dupNo');
+			parserError('이니시스', {r: rowNum, c: '주문번호'}, 'dupNo');
 			continue;
 		}
 
@@ -73,26 +74,26 @@ function parserInipay(wb) {
 		
 		let totalFee = parseFloat( row['거래금액'].replace(/[,.]/g, '') );
 		if (!totalFee) {
-			parseError('이니시스', {r: rowNum, c: '거래금액'}, 'emptyCell');
+			parserError('이니시스', {r: rowNum, c: '거래금액'}, 'emptyCell');
 			continue;
 		}
 		tmp['총입금액'] = totalFee;
 
 		let tax1 = parseFloat( row['수수료'].replace(/[,.]/g, '') );
 		if (!tax1) {
-			parseError('이니시스', {r: rowNum, c: '수수료'}, 'emptyCell');
+			parserError('이니시스', {r: rowNum, c: '수수료'}, 'emptyCell');
 			continue;
 		}
 		let tax2 = parseFloat( row['부가세'].replace(/[,.]/g, '') );
 		if (!tax2) {
-			parseError('이니시스', {r: rowNum, c: '부가세'}, 'emptyCell');
+			parserError('이니시스', {r: rowNum, c: '부가세'}, 'emptyCell');
 			continue;
 		}
 		tmp['총수수료'] = tax1 + tax2;
 
 		let realFee = parseFloat( row['지급액'].replace(/[,.]/g, '') );
 		if (!realFee) {
-			parseError('이니시스', {r: rowNum, c: '지급액'}, 'emptyCell');
+			parserError('이니시스', {r: rowNum, c: '지급액'}, 'emptyCell');
 			continue;
 		}
 		tmp['실입금액'] = realFee;
@@ -109,21 +110,66 @@ function parserInipay(wb) {
 }
 
 function parserAllat(wb) {
-	let wsInipay = wb.Sheets['올앳샘플'];
+	let ws = wb.Sheets['올앳샘플'];
 	let rowArr = XLSX.utils.sheet_to_json(ws);
+	let rowNum = 1;
 	for (let row of rowArr) {
+		rowNum++;
+		let id = row['주문번호'];
+
+		if (id in rawData) { 
+			parserError('올앳샘플', {r: rowNum, c: '주문번호'}, 'dupNo');
+			console.log(id);
+			continue;
+		}
+
+		let tmp = {};
 		
+		let totalFee = parseFloat( row['정산금액'].replace(/[,.]/g, '') );
+		if (!totalFee) {
+			parserError('올앳샘플', {r: rowNum, c: '정산금액'}, 'emptyCell');
+			continue;
+		}
+		tmp['총입금액'] = totalFee;
+
+		let tax1 = parseFloat( row['수수료'].replace(/[,.]/g, '') );
+		if (!tax1) {
+			parserError('올앳샘플', {r: rowNum, c: '수수료'}, 'emptyCell');
+			continue;
+		}
+		let tax2 = parseFloat( row['수수료부가세'].replace(/[,.]/g, '') );
+		if (!tax2) {
+			parserError('올앳샘플', {r: rowNum, c: '수수료부가세'}, 'emptyCell');
+			continue;
+		}
+		tmp['총수수료'] = tax1 + tax2;
+
+		let realFee = parseFloat( row['실입금액'].replace(/[,.]/g, '') );
+		if (!realFee) {
+			parserError('올앳샘플', {r: rowNum, c: '실입금액'}, 'emptyCell');
+			continue;
+		}
+		tmp['실입금액'] = realFee;
+
+		let PGType = '올앳샘플';
+		tmp['PG사'] = PGType;
+
+		tmp['치수'] = '';
+
+		tmp['환율'] = '';
+
+		rawData[id] = tmp;
 	}
 }
 
 function parserDouzone(wb) {
-	let wsInipay = wb.Sheets['더존샘플'];
+	let ws = wb.Sheets['더존샘플'];
 	let rowArr = XLSX.utils.sheet_to_json(ws);
 
 }
 
 function parserEximbay(wb) {
-	let wsInipay = wb.Sheets["이니시스"];
+	let ws = wb.Sheets["이니시스"];
 	let rowArr = XLSX.utils.sheet_to_json(ws);
 	for (let row of rowArr) {
 		
