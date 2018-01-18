@@ -1,7 +1,11 @@
 const STATE = ['WAIT', 'PROCESSING', 'DONE'];
 
-let inputFile = true;
+const rABS = typeof FileReader !== "undefined" && typeof FileReader.prototype !== "undefined" && typeof FileReader.prototype.readAsBinaryString !== "undefined";
+
+let inputFile = false;
 let outputFile;
+
+let wb;
 
 let statusIdx = 0;
 console.log('[STATE]', STATE[statusIdx]);
@@ -12,8 +16,12 @@ const dotSpan = document.querySelector('span.dot');
 const processBtn = document.querySelector('input.process');
 const downloadBtn = document.querySelector('input.download');
 
+const fileInput = document.querySelector('input.fileUpload');
+
 processBtn.addEventListener('click', processBtnHandler);
 downloadBtn.addEventListener('click', downloadBtnHandler);
+
+fileInput.addEventListener('change', fileInputHandler);
 
 function processBtnHandler() {
 	// Check input uploaded
@@ -36,8 +44,41 @@ function downloadBtnHandler() {
 	// Check output made
 	if (outputFile) {
 		// Return ouput
-		console.log("Download complete");
+		console.log("Download complete.");
 	}
+}
+
+function fileInputHandler(e) {
+	let file = fileInput.files[0];
+
+	if (fileValidation(file)) {
+		let reader = new FileReader();
+		let inputFile = true;
+
+		reader.onload = function(e) {
+			let data = rABS ? e.target.result : btoa( fixdata(e.target.result) );
+			wb = XLSX.read(data, {type: rABS ? 'binary' : 'base64'});
+			console.log(wb.Sheets[wb.SheetNames[0]]);
+		}
+
+		if(rABS) reader.readAsBinaryString(file);
+		else reader.readAsArrayBuffer(file);
+	}
+	else {
+		alert("The file is not a supported format.");
+	}
+
+}
+
+function fileValidation(file) {
+	let valSet = ['.xlsx', '.xls'];
+
+	for (let val of valSet) {
+		if (file.name.match(val))
+			return true;
+	}
+
+	return false;
 }
 
 function startProcessing(intervalID) {
@@ -61,4 +102,11 @@ function dotProcessing() {
 	else {
 		dotSpan.innerText = '.';
 	}
+}
+
+function fixdata(data) {
+	var o = "", l = 0, w = 10240;
+	for(; l<data.byteLength/w; ++l) o+=String.fromCharCode.apply(null,new Uint8Array(data.slice(l*w,l*w+w)));
+	o+=String.fromCharCode.apply(null, new Uint8Array(data.slice(l*w)));
+	return o;
 }
