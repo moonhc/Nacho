@@ -53,12 +53,11 @@ function fileInputHandler(e) {
 
 	if (fileValidation(file)) {
 		let reader = new FileReader();
-		let inputFile = true;
+		inputFile = true;
 
 		reader.onload = function(e) {
 			let data = rABS ? e.target.result : btoa( fixdata(e.target.result) );
 			wb = XLSX.read(data, {type: rABS ? 'binary' : 'base64'});
-			console.log(wb.Sheets[wb.SheetNames[0]]);
 		}
 
 		if(rABS) reader.readAsBinaryString(file);
