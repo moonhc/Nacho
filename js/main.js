@@ -81,6 +81,10 @@ function fileValidation(file) {
 }
 
 function startProcessing(intervalID) {
+	let parserFunc = parserDeterminant('INIPAY');
+
+	parserFunc(wb);
+
 	setTimeout(
 		function () { 
 			statusIdx = 2;

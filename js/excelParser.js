@@ -59,7 +59,7 @@ function parserError(sheetName, cellPos, errorType) {
 
 function parserInipay(wb) {
 	let wsInipay = wb.Sheets['이니시스'];
-	let rowArr = XLSX.utils.sheet_to_json(ws);
+	let rowArr = XLSX.utils.sheet_to_json(wsInipay);
 	let rowNum = 1;
 	for (let row of rowArr) {
 		let id = row['주문번호'];
@@ -71,7 +71,7 @@ function parserInipay(wb) {
 
 		let tmp = {};
 		
-		let totalFee = parseFloat( row['거래금액'].replace(/플,.]/g, '') );
+		let totalFee = parseFloat( row['거래금액'].replace(/[,.]/g, '') );
 		if (!totalFee) {
 			parseError('이니시스', {r: rowNum, c: '거래금액'}, 'emptyCell');
 			continue;
