@@ -19,13 +19,11 @@ const PAYTYPE = [
 	];
 
 // Parser functions
-const PARSER = [];
+let PARSER = {};
 
 // Parsed data from several excel files.
 // {등록번호 : {총입금액, 총수수료 (수수료+부가세), 실입금액 (총입금액-총 수수료), PG사, 차수, 환율} }
-let rawData = {};
-
-let errLog = [];
+let rawData, cancelData, errLog;
 
 // Distributor for parser
 function parserDeterminant(payType) {
@@ -33,7 +31,6 @@ function parserDeterminant(payType) {
 		return PARSER[payType];
 	else
 		return PARSER['ERROR'];
-
 }
 
 // Parser functions
@@ -49,6 +46,16 @@ function parserError(sheetName, cellPos, errorType) {
 				`[${errorType}] 시트: ${sheetName} 위치: ${cellPos.r}, ${cellPos.c}
 								필요한 정보가 없습니다.`);
 			break;
+		case 'notNumber':
+			errLog.push(
+				`[${errorType}] 시트: ${sheetName} 위치: ${cellPos.r}, ${cellPos.c}
+								숫자로 변환될 수 없습니다.`);
+			break;
+		case 'noPayment':
+			errLog.push(
+				`[${errorType}] 시트: ${sheetName} 위치: ${cellPos.r}, ${cellPos.c}
+								취소 내역에 대한 결제 내역을 찾을 수 없습니다.`);
+			break;
 		default:
 			errLog.push(
 				`[${errorType}] 시트: ${sheetName} 위치: ${cellPos.r}, ${cellPos.c}
@@ -58,243 +65,293 @@ function parserError(sheetName, cellPos, errorType) {
 }
 
 function parserInipay(wb) {
-	let ws = wb.Sheets['이니시스'];
+	let sheetName = '이니시스'
+	if (!(sheetName in wb.Sheets)) return;
+
+	let ws = wb.Sheets[sheetName];
 	let rowArr = XLSX.utils.sheet_to_json(ws);
 	let rowNum = 1;
 
 	for (let row of rowArr) {
 		rowNum++;
+
 		let id = row['주문번호'];
-		if (id in rawData) { 
-			parserError('이니시스', {r: rowNum, c: '주문번호'}, 'dupNo');
+		if (!id) {
+			parserError(sheetName, {r: rowNum, c: '주문번호'}, 'emptyCell');
 			continue;
-		} else if (!id) {
-			parserError('이니시스', {r: rowNum, c: '주문번호'}, 'emptyCell');
 		}
 
-		let tmp = {};
-		
-		let totalFee = parseFloat( row['거래금액'].replace(/[,]/g, '') );
+		let totalFee = row['거래금액'];
 		if (!totalFee) {
-			parserError('이니시스', {r: rowNum, c: '거래금액'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '거래금액'}, 'emptyCell');
 			continue;
 		}
-		tmp['총입금액'] = totalFee;
+		totalFee = totalFee.replace(/[,]/g, '');
+		if (isNaN(totalFee)) {
+			parserError(sheetName, {r: rowNum, c: '거래금액'}, 'notNumber');
+			continue;
+		}
+		totalFee = parseFloat(totalFee);
 
-		let tax1 = parseFloat( row['수수료'].replace(/[,]/g, '') );
+		let tax1 = row['수수료'];
 		if (!tax1) {
-			parserError('이니시스', {r: rowNum, c: '수수료'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '수수료'}, 'emptyCell');
 			continue;
 		}
-		let tax2 = parseFloat( row['부가세'].replace(/[,]/g, '') );
+		tax1 = tax1.replace(/[,]/g, '');
+		if (isNaN(tax1)) {
+			parserError(sheetName, {r: rowNum, c: '수수료'}, 'notNumber');
+			continue;
+		}
+		tax1 = parseFloat(tax1);
+
+		let tax2 = row['부가세'];
 		if (!tax2) {
-			parserError('이니시스', {r: rowNum, c: '부가세'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '부가세'}, 'emptyCell');
 			continue;
 		}
-		tmp['총수수료'] = tax1 + tax2;
-
-		let realFee = parseFloat( row['지급액'].replace(/[,]/g, '') );
-		if (!realFee) {
-			parserError('이니시스', {r: rowNum, c: '지급액'}, 'emptyCell');
+		tax2 = tax2.replace(/[,]/g, '');
+		if (isNaN(tax2)) {
+			parserError(sheetName, {r: rowNum, c: '부가세'}, 'notNumber');
 			continue;
 		}
-		tmp['실입금액'] = realFee;
+		tax2 = parseFloat(tax2);
 
+		let realFee = totalFee - tax1 - tax2;
 		let PGType = '이니시스';
-		tmp['PG사'] = PGType;
 
-		tmp['차수'] = '';
-
-		tmp['환율'] = '';
-
-		rawData[id] = tmp;
+		addData(id, totalFee, tax1+tax2, realFee, PGType, undefined, sheetName, {r:rowNum, c:'주문번호'});
 	}
 }
 
 function parserAllat(wb) {
-	let ws = wb.Sheets['올앳샘플'];
+	let sheetName = '올앳샘플'
+	if (!(sheetName in wb.Sheets)) return;
+	
+	let ws = wb.Sheets[sheetName];
 	let rowArr = XLSX.utils.sheet_to_json(ws);
 	let rowNum = 1;
 
 	for (let row of rowArr) {
 		rowNum++;
 		let id = row['주문번호'];
-		if (id in rawData) { 
-			parserError('올앳샘플', {r: rowNum, c: '주문번호'}, 'dupNo');
+		if (!id) {
+			parserError(sheetName, {r: rowNum, c: '주문번호'}, 'emptyCell');
 			continue;
-		} else if (!id) {
-			parserError('올앳샘플', {r: rowNum, c: '주문번호'}, 'emptyCell');
 		}
 
-		let tmp = {};
-		
-		let totalFee = parseFloat( row['정산금액'].replace(/[,]/g, '') );
+		let totalFee = row['정산금액'];
 		if (!totalFee) {
-			parserError('올앳샘플', {r: rowNum, c: '정산금액'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '정산금액'}, 'emptyCell');
 			continue;
 		}
-		tmp['총입금액'] = totalFee;
+		totalFee = totalFee.replace(/[,]/g, '');
+		if (isNaN(totalFee)) {
+			parserError(sheetName, {r: rowNum, c: '정산금액'}, 'notNumber');
+			continue;
+		}
+		totalFee = parseFloat(totalFee);
 
-		let tax1 = parseFloat( row['수수료'].replace(/[,]/g, '') );
+		let tax1 = row['수수료'];
 		if (!tax1) {
-			parserError('올앳샘플', {r: rowNum, c: '수수료'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '수수료'}, 'emptyCell');
 			continue;
 		}
-		let tax2 = parseFloat( row['수수료부가세'].replace(/[,]/g, '') );
+		tax1 = tax1.replace(/[,]/g, '');
+		if (isNaN(tax1)) {
+			parserError(sheetName, {r: rowNum, c: '수수료'}, 'notNumber');
+			continue;
+		}
+		tax1 = parseFloat(tax1);
+
+		let tax2 = row['수수료부가세'];
 		if (!tax2) {
-			parserError('올앳샘플', {r: rowNum, c: '수수료부가세'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '수수료부가세'}, 'emptyCell');
 			continue;
 		}
-		tmp['총수수료'] = tax1 + tax2;
-
-		let realFee = parseFloat( row['실입금액'].replace(/[,]/g, '') );
-		if (!realFee) {
-			parserError('올앳샘플', {r: rowNum, c: '실입금액'}, 'emptyCell');
+		tax2 = tax2.replace(/[,]/g, '');
+		if (isNaN(tax2)) {
+			parserError(sheetName, {r: rowNum, c: '수수료부가세'}, 'notNumber');
 			continue;
 		}
-		tmp['실입금액'] = realFee;
+		tax2 = parseFloat(tax2);
 
-		let PGType = '올앳샘플';
-		tmp['PG사'] = PGType;
-
-		tmp['차수'] = '';
-
-		tmp['환율'] = '';
-
-		rawData[id] = tmp;
+		let realFee = totalFee - tax1 - tax2;
+		let PGType = '올앳';
+		
+		addData(id, totalFee, tax1+tax2, realFee, PGType, undefined, sheetName, {r:rowNum, c:'주문번호'});
 	}
 }
 
 function parserDouzone(wb) {
-	let ws = wb.Sheets['더존샘플'];
+	let sheetName = '더존샘플'
+	if (!(sheetName in wb.Sheets)) return;
+	
+	let ws = wb.Sheets[sheetName];
 	let rowArr = XLSX.utils.sheet_to_json(ws);
 	let rowNum = 1;
 
 	for (let row of rowArr) {
 		rowNum++;
-
-		if (rowNum == 2) continue;
 
 		if (rowNum % 2 == 1) {
 			let id = row['상품명'].replace(/.*\[(\w*)\]/g,'$1');
-			if (id in rawData) { 
-				parserError('더존샘플', {r: rowNum, c: '상품명'}, 'dupNo');
+			if (!id) {
+				parserError(sheetName, {r: rowNum, c: '주문번호'}, 'emptyCell');
 				continue;
-			} else if (!id) {
-				parserError('더존샘플', {r: rowNum, c: '주문번호'}, 'emptyCell');
 			}
-
-			let tmp = {};
-
-			let totlaFee = parseFloat( row['매입금액'].replace(/[,]/g, '') );
+			id = id.replace(/.*\[(\w*)\]/g,'$1');
+			
+			let totalFee = row['매입금액'];
 			if (!totalFee) {
-				parserError('더존샘플', {r: rowNum, c: '매입금액'}, 'emptyCell');
+				parserError(sheetName, {r: rowNum, c: '매입금액'}, 'emptyCell');
 				continue;
 			}
-			tmp['총입금액'] = totalFee;
+			totalFee = totalFee.replace(/[,]/g, '');
+			if (isNaN(totalFee)) {
+				parserError(sheetName, {r: rowNum, c: '매입금액'}, 'notNumber');
+				continue;
+			}
+			totalFee = parseFloat(totalFee);
 
-			let tax1 = parseFloat( row['수수료'].replace(/[,]/g, '') );
+			let tax1 = row['수수료'];
 			if (!tax1) {
-				parserError('더존샘플', {r: rowNum, c: '수수료'}, 'emptyCell');
+				parserError(sheetName, {r: rowNum, c: '수수료'}, 'emptyCell');
 				continue;
 			}
-			let tax2 = parseFloat( row['부가세'].replace(/[,]/g, '') );
+			tax1 = tax1.replace(/[,]/g, '');
+			if (isNaN(tax1)) {
+				parserError(sheetName, {r: rowNum, c: '수수료'}, 'notNumber');
+				continue;
+			}
+			tax1 = parseFloat(tax1);
+
+			let tax2 = row['부가세'];
 			if (!tax2) {
-				parserError('더존샘플', {r: rowNum, c: '부가세'}, 'emptyCell');
+				parserError(sheetName, {r: rowNum, c: '부가세'}, 'emptyCell');
 				continue;
 			}
-			tmp['총수수료'] = tax1 + tax2;
+			tax2 = tax2.replace(/[,]/g, '');
+			if (isNaN(tax2)) {
+				parserError(sheetName, {r: rowNum, c: '부가세'}, 'notNumber');
+				continue;
+			}
+			tax2 = parseFloat(tax2);
 
-			let PGType = '더존샘플';
-			tmp['PG사'] = PGType;
+			let realFee = totalFee - tax1 - tax2;
+			let PGType = '더존';
 
-			tmp['차수'] = '';
-
-			tmp['환율'] = '';
-
-			rawData[id] = tmp;
+			addData(id, totalFee, tax1+tax2, realFee, PGType, undefined, sheetName, {r:rowNum, c:'상품명'});
 		}
 	}
-
 }
 
 function parserEximbay(wb) {
-	let ws = wb.Sheets['엑심베이'];
+	let sheetName = '엑심베이'
+	if (!(sheetName in wb.Sheets)) return;
+	
+	let ws = wb.Sheets[sheetName];
 	let rowArr = XLSX.utils.sheet_to_json(ws);
 	let rowNum = 1;
 
 	for (let row of rowArr) {
 		rowNum++;
+
 		let id = row['등록번호'];
-		if (id in rawData) { 
-			parserError('엑심베이', {r: rowNum, c: '주문번호'}, 'dupNo');
+		if (!id) {
+			parserError(sheetName, {r: rowNum, c: '등록번호'}, 'emptyCell');
 			continue;
-		} else if (!id) {
-			parserError('엑심베이', {r: rowNum, c: '주문번호'}, 'emptyCell');
 		}
 
-
-		let tmp = {};
-		
-		let totalFee = parseFloat( row['금액'].replace(/[,]/g, '') );
+		let totalFee = row['금액'];
 		if (!totalFee) {
-			parserError('엑심베이', {r: rowNum, c: '금액'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '금액'}, 'emptyCell');
 			continue;
-		} else if (totlaFee < 0) {
-			parserError('엑심베이', {r: rowNum, c: '금액'}, 'negativeValue');
 		}
-		tmp['총입금액'] = totalFee;
+		totalFee = totalFee.replace(/[,]/g, '');
+		if (isNaN(totalFee)) {
+			parserError(sheetName, {r: rowNum, c: '금액'}, 'notNumber');
+			continue;
+		}
+		totalFee = parseFloat(totalFee);
 
-		let tax1 = parseFloat( row['수수료'].replace(/[-,]/g, '') );
+		let tax1 = row['수수료'];
 		if (!tax1) {
-			parserError('엑심베이', {r: rowNum, c: '수수료'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '수수료'}, 'emptyCell');
 			continue;
 		}
-		let tax2 = parseFloat( row['결제수수료'].replace(/[-,]/g, '') );
+		tax1 = tax1.replace(/[,]/g, '');
+		if (isNaN(tax1)) {
+			parserError(sheetName, {r: rowNum, c: '수수료'}, 'notNumber');
+			continue;
+		}
+		tax1 = parseFloat(tax1);
+
+		let tax2 = row['결제수수료'];
 		if (!tax2) {
-			parserError('엑심베이', {r: rowNum, c: '결제수수료'}, 'emptyCell');
+			parserError(sheetName, {r: rowNum, c: '결제수수료'}, 'emptyCell');
 			continue;
 		}
-		tmp['총수수료'] = tax1 + tax2;
-
-		let realFee = parseFloat( row['원화'].replace(/[,]/g, '') );
-		if (!realFee) {
-			parserError('엑심베이', {r: rowNum, c: '원화'}, 'emptyCell');
+		tax2 = tax2.replace(/[,]/g, '');
+		if (isNaN(tax2)) {
+			parserError(sheetName, {r: rowNum, c: '결제수수료'}, 'notNumber');
 			continue;
 		}
-		tmp['실입금액'] = realFee;
+		tax2 = parseFloat(tax2);
 
+		let realFee = totalFee + tax1 + tax2;
 		let PGType = '엑심베이';
-		tmp['PG사'] = PGType;
 
-		tmp['차수'] = '';
+		let currency = row['환율']
+		if (!currency) {
+			parserError(sheetName, {r: rowNum, c: '환율'}, 'emptyCell');
+			continue;
+		}
+		currency = currency.replace(/[,]/g, '');
+		if (isNaN(currency)) {
+			parserError(sheetName, {r: rowNum, c: '환율'}, 'notNumber');
+			continue;
+		}
+		currency = parseFloat(currency);
 
-		tmp['환율'] = parseFloat( row['환율'].replace(/[,]/g, '') );
-
-		rawData[id] = tmp;
+		addData(id, totalFee, (tax1+tax2)*-1, realFee, PGType, currency, sheetName, {r:rowNum, c:'상품명'});
 	}
 }
 
 function parserTransfer(wb) {
-    let ws = wb.Sheets['계좌이체']
+	let sheetName = '계좌이체'
+	if (!(sheetName in wb.Sheets)) return;
+	
+    let ws = wb.Sheets[sheetName]
     let rowArr = XLSX.utils.sheet_to_json(ws);
     let rowNum = 1;
 
     for (let row of rowArr) {
         rowNum++;
+
         let id = row['등록번호'];
-        if (id in rawData) {
-            parseError('계좌이체', {r: rowNum, c: '등록번호'}, 'dupNo');
+        if (!id) {
+            parserError(sheetName, {r: rowNum, c: '등록번호'}, 'emptyCell');
             continue;
-        } else if (!id) {
-            parseError('계좌이체', {r: rowNum, c: '등록번호'}, 'emptyCell');
+        } else if (id in rawData) {
+            parserError(sheetName, {r: rowNum, c: '등록번호'}, 'dupNo');
+            continue;
+        }
 
         let tmp = {};
 
         let totalFee = parseFloat( row['맡기신금액'].replace(/[,]/g, '') );
         if (!totalFee) {
-            parseError('계좌이체', {r: rowNum, c: '맡기신금액'}, 'emptyCell');
+            parseError(sheetName, {r: rowNum, c: '맡기신금액'}, 'emptyCell');
+            continue;
         }
+        totalFee = row['맡기신금액'].replace(/[,]/g, '');
+        if (isNaN(totalFee)) {
+        	parserError(sheetName, {r: rowNum, c: '맡기신금액'}, 'notNumber');
+        	continue;
+        }
+        totalFee = parseFloat(totalFee);
+
         tmp['총입금액'] = totalFee;
 
         tmp['총수수료'] = 0;
@@ -304,70 +361,147 @@ function parserTransfer(wb) {
         let PGType = '계좌이체';
         tmp['PG사'] = PGType;
 
-        tmp['차수'] = '';
-
-        tmp['환율'] = '';
-
         rawData[id] = tmp;
     }
 }
 
 function parserOnsite(wb) {
-    let ws = wb.Sheets['현장카드']
+	let sheetName = '현장카드'
+	if (!(sheetName in wb.Sheets)) return;
+	
+    let ws = wb.Sheets[sheetName]
     let rowArr = XLSX.utils.sheet_to_json(ws);
     let rowNum = 1;
     let prevId = 0;
 
     for (let row of rowArr) {
         rowNum++;
+
+        let totalFee = row['카드금액'];
+        if (!totalFee) {
+        	parserError(sheetName, {r: rowNum, c: '카드금액'}, 'emptyCell');
+        	continue;
+        }
+        totalFee = totalFee.replace(/[,]/g, '');
+        if (isNaN(totalFee)) {
+        	parserError(sheetName, {r: rowNum, c: '카드금액'}, 'notNumber');
+        	continue;
+        }
+        totalFee = parseFloat(totalFee);
+
+        let tax = row['차감수수료'];
+        if (!tax) {
+        	parserError(sheetName, {r: rowNum, c: '차감수수료'}, 'emptyCell');
+        	continue;
+        }
+        tax = tax.replace(/[,]/g, '');
+        if (isNaN(tax)) {
+        	parserError(sheetName, {r: rowNum, c: '차감수수료'}, 'notNumber');
+        	continue;
+        }
+        tax = parseFloat(tax);
+
+		let realFee = parseFloat( row['입금액'].replace(/[,]/g, '') );
+        if (!realFee) {
+            parserError(sheetName, {r: rowNum, c: '입금액'}, 'emptyCell');
+            continue;
+        }
+        realFee = realFee.replace(/[,]/g, '');
+        if (isNaN(realFee)) {
+        	parserError(sheetName, {r: rowNum, c: '입금액'}, 'notNumber');
+        	continue;
+        }
+        realFee = parseFloat(realFee);
+
         let id = row['등록번호'];
         if (id in rawData) {
-            parseError('현장카드', {r: rowNum, c: '등록번호'}, 'dupNo');
+            parserError(sheetName, {r: rowNum, c: '등록번호'}, 'dupNo');
             continue;
         } else if (!id) {
             if (!row['카드금액']) {
-                parseError('현장카드', {r: rowNum, c: '등록번호'}, 'emptyCell');
+                parserError(sheetName, {r: rowNum, c: '등록번호'}, 'emptyCell');
+                continue;
             } else {
-                rowData[prevId]['총입금액'] += parseFloat( row['카드금액'].replace(/[,]/g, '') );
-                rowData[prevId]['총수수료'] += parseFloat( row['차감수수료'].replace(/[,]/g, '') );
-                rowData[prevId]['실입금액'] += parseFloat( row['입금액'].replace(/[,]/g, '') );
+                rowData[prevId]['총입금액'] += totalFee;
+                rowData[prevId]['총수수료'] += tax;
+                rowData[prevId]['실입금액'] += realFee;
                 continue;
             }
         }
 
-
         let tmp = {};
-
-        let totalFee = parseFloat( row['카드금액'].replace(/[,]/g, '') );
-        if (!totalFee) {
-            parserError('현장카드', {r: rowNum, c: '카드금액'}, 'emptyCell');
-            continue;
+     
         tmp['총입금액'] = totalFee;
-
-        let tax = parseFloat( row['차감수수료'].replace(/[,]/g, '') );
-        if (!tax) {
-            parserError('현장카드', {r: rowNum, c: '차감수수료'}, 'emptyCell');
-            continue;
-        }
         tmp['총수수료'] = tax;
-
-        let realFee = parseFloat( row['입금액'].replace(/[,]/g, '') );
-        if (!realFee) {
-            parserError('현장카드', {r: rowNum, c: '입금액'}, 'emptyCell');
-            continue;
-        }
         tmp['실입금액'] = realFee;
 
-        let PGType = '현장등록';
+        let PGType = '현장카드';
         tmp['PG사'] = PGType;
-
-        tmp['차수'] = '';
-
-        tmp['환율'] = '';
 
         rawData[id] = tmp;
         prevId = id;
     }
+}
+
+function addData(id, totalFee, tax, realFee, PGType, currency, sheetName, cellPos) {
+	if (totalFee >= 0) {
+		// 결제 내역
+		if (id in rawData) { 
+			parserError(sheetName, cellPos, 'dupNo');
+			return;
+		}
+
+		let tmp = {};
+		tmp['총입금액'] = totalFee;
+		tmp['총수수료'] = tax;
+		tmp['실입금액'] = realFee;
+		tmp['PG사'] = PGType;
+		tmp['환율'] = currency;
+
+		rawData[id] = tmp;
+	} else if (totalFee < 0) {
+		// 취소 내역
+		if (!(id in rawData)) { 
+			parserError(sheetName, cellPos, 'noPayment');
+			return;
+		}
+
+		if (id in cancelData) {
+			let tmp = {};
+			tmp['총입금액'] = totalFee;
+			tmp['총수수료'] = tax;
+			tmp['실입금액'] = realFee;
+			tmp['PG사'] = PGType;
+			tmp['환율'] = currency;
+			cancelData[id].push(tmp); 
+		} else {
+			cancelData[id] = [];
+
+			// Original Data
+			cancelData[id].push( JSON.parse(JSON.stringify(rawData[id])) );
+
+			// Cancel Data
+			let tmp = {};
+			tmp['총입금액'] = totalFee;
+			tmp['총수수료'] = tax;
+			tmp['실입금액'] = realFee;
+			tmp['PG사'] = PGType;
+			tmp['환율'] = currency;
+			cancelData[id].push(tmp); 
+		}
+
+		rawData[id]['총입금액'] += totalFee;
+		rawData[id]['총수수료'] += tax;
+		rawData[id]['실입금액'] += realFee;
+
+		if (rawData[id]['총입금액'] == 0) {
+			delete rawData[id];
+		}
+	} else {
+		// Error
+		parserError(sheetName, cellPos, 'Undefined');
+		return;
+	}
 }
 
 function init() {
@@ -375,6 +509,10 @@ function init() {
 		funcName = 'parser' + type[0] + type.slice(1).toLowerCase();
 		PARSER[type] = window[funcName];
 	}
+
+	rawData = {};
+	cancelData = {};
+	errLog = [];
 }
 
 init();
