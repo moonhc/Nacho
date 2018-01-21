@@ -276,11 +276,98 @@ function parserEximbay(wb) {
 }
 
 function parserTransfer(wb) {
+    let ws = wb.Sheets['계좌이체']
+    let rowArr = XLSX.utils.sheet_to_json(ws);
+    let rowNum = 1;
 
+    for (let row of rowArr) {
+        rowNum++;
+        let id = row['등록번호'];
+        if (id in rawData) {
+            parseError('계좌이체', {r: rowNum, c: '등록번호'}, 'dupNo');
+            continue;
+        } else if (!id) {
+            parseError('계좌이체', {r: rowNum, c: '등록번호'}, 'emptyCell');
+
+        let tmp = {};
+
+        let totalFee = parseFloat( row['맡기신금액'].replace(/[,]/g, '') );
+        if (!totalFee) {
+            parseError('계좌이체', {r: rowNum, c: '맡기신금액'}, 'emptyCell');
+        }
+        tmp['총입금액'] = totalFee;
+
+        tmp['총수수료'] = 0;
+
+        tmp['실입금액'] = totalFee;
+
+        let PGType = '계좌이체';
+        tmp['PG사'] = PGType;
+
+        tmp['차수'] = '';
+
+        tmp['환율'] = '';
+
+        rawData[id] = tmp;
+    }
 }
 
 function parserOnsite(wb) {
+    let ws = wb.Sheets['현장카드']
+    let rowArr = XLSX.utils.sheet_to_json(ws);
+    let rowNum = 1;
+    let prevId = 0;
 
+    for (let row of rowArr) {
+        rowNum++;
+        let id = row['등록번호'];
+        if (id in rawData) {
+            parseError('현장카드', {r: rowNum, c: '등록번호'}, 'dupNo');
+            continue;
+        } else if (!id) {
+            if (!row['카드금액']) {
+                parseError('현장카드', {r: rowNum, c: '등록번호'}, 'emptyCell');
+            } else {
+                rowData[prevId]['총입금액'] += parseFloat( row['카드금액'].replace(/[,]/g, '') );
+                rowData[prevId]['총수수료'] += parseFloat( row['차감수수료'].replace(/[,]/g, '') );
+                rowData[prevId]['실입금액'] += parseFloat( row['입금액'].replace(/[,]/g, '') );
+                continue;
+            }
+        }
+
+
+        let tmp = {};
+
+        let totalFee = parseFloat( row['카드금액'].replace(/[,]/g, '') );
+        if (!totalFee) {
+            parserError('현장카드', {r: rowNum, c: '카드금액'}, 'emptyCell');
+            continue;
+        tmp['총입금액'] = totalFee;
+
+        let tax = parseFloat( row['차감수수료'].replace(/[,]/g, '') );
+        if (!tax) {
+            parserError('현장카드', {r: rowNum, c: '차감수수료'}, 'emptyCell');
+            continue;
+        }
+        tmp['총수수료'] = tax;
+
+        let realFee = parseFloat( row['입금액'].replace(/[,]/g, '') );
+        if (!realFee) {
+            parserError('현장카드', {r: rowNum, c: '입금액'}, 'emptyCell');
+            continue;
+        }
+        tmp['실입금액'] = realFee;
+
+        let PGType = '현장등록';
+        tmp['PG사'] = PGType;
+
+        tmp['차수'] = '';
+
+        tmp['환율'] = '';
+
+        rawData[id] = tmp;
+        prevId = id;
+    }
 }
 
 function init() {
