@@ -26,6 +26,9 @@ function downloadExcel(workbook) {
 			a.click();
 			window.URL.revokeObjecURL(url);
 			document.body.removeChild(a);
+		}).catch(
+		function (err) {
+			alert(err.message || err);
 		});
 }
 
