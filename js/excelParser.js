@@ -22,7 +22,11 @@ const PAYTYPE = [
 let PARSER = {};
 
 // Parsed data from several excel files.
-// {등록번호 : {총입금액, 총수수료 (수수료+부가세), 실입금액 (총입금액-총 수수료), PG사, 차수, 환율} }
+// {
+//	등록번호 : 
+//		{총입금액USD/KRW, 총수수료(수수료+부가세)USD/KRW, 실입금액(총입금액-총 수수료)KRW, 
+//			PG사, 차수, 환율} 
+// }
 let rawData, cancelData, errLog;
 
 // Distributor for parser
@@ -120,7 +124,12 @@ function parserInipay(wb) {
 		let realFee = totalFee - tax1 - tax2;
 		let PGType = '이니시스';
 
-		addData(id, totalFee, tax1+tax2, realFee, PGType, undefined, sheetName, {r:rowNum, c:'주문번호'});
+		addData(
+			sheetName,
+			{r:rowNum, c:'주문번호'},
+			{id:id, totalFee:totalFee, tax:tax1+tax2, 
+				realFee:realFee, PGType:PGType, currency:undefined},
+			row);
 	}
 }
 
@@ -179,7 +188,12 @@ function parserAllat(wb) {
 		let realFee = totalFee - tax1 - tax2;
 		let PGType = '올앳';
 		
-		addData(id, totalFee, tax1+tax2, realFee, PGType, undefined, sheetName, {r:rowNum, c:'주문번호'});
+		addData(
+			sheetName,
+			{r:rowNum, c:'주문번호'},
+			{id:id, totalFee:totalFee, tax:tax1+tax2, 
+				realFee:realFee, PGType:PGType, currency:undefined},
+			row);
 	}
 }
 
@@ -241,7 +255,12 @@ function parserDouzone(wb) {
 			let realFee = totalFee - tax1 - tax2;
 			let PGType = '더존';
 
-			addData(id, totalFee, tax1+tax2, realFee, PGType, undefined, sheetName, {r:rowNum, c:'상품명'});
+			addData(
+				sheetName, 
+				{r:rowNum, c:'상품명'},
+				{id:id, totalFee:totalFee, tax:tax1+tax2, 
+					realFee:realFee, PGType:PGType, currency:undefined},
+				row);
 		}
 	}
 }
@@ -314,7 +333,12 @@ function parserEximbay(wb) {
 		}
 		currency = parseFloat(currency);
 
-		addData(id, totalFee, (tax1+tax2)*-1, realFee, PGType, currency, sheetName, {r:rowNum, c:'상품명'});
+		addData(
+			sheetName, 
+			{r:rowNum, c:'상품명'},
+			{id:id, totalFee:totalFee, tax:(tax1+tax2)*-1, 
+				realFee:realFee*currency, PGType:PGType, currency:currency},
+			row);
 	}
 }
 
@@ -331,7 +355,6 @@ function parserTransfer(wb) {
 
         let id = row['등록번호'];
         if (!id) {
-            parserError(sheetName, {r: rowNum, c: '등록번호'}, 'emptyCell');
             continue;
         } else if (id in rawData) {
             parserError(sheetName, {r: rowNum, c: '등록번호'}, 'dupNo');
@@ -340,12 +363,12 @@ function parserTransfer(wb) {
 
         let tmp = {};
 
-        let totalFee = parseFloat( row['맡기신금액'].replace(/[,]/g, '') );
+        let totalFee = row['맡기신금액'];
         if (!totalFee) {
-            parseError(sheetName, {r: rowNum, c: '맡기신금액'}, 'emptyCell');
+            parserError(sheetName, {r: rowNum, c: '맡기신금액'}, 'emptyCell');
             continue;
         }
-        totalFee = row['맡기신금액'].replace(/[,]/g, '');
+        totalFee = totalFee.replace(/[,]/g, '');
         if (isNaN(totalFee)) {
         	parserError(sheetName, {r: rowNum, c: '맡기신금액'}, 'notNumber');
         	continue;
@@ -401,7 +424,7 @@ function parserOnsite(wb) {
         }
         tax = parseFloat(tax);
 
-		let realFee = parseFloat( row['입금액'].replace(/[,]/g, '') );
+		let realFee = row['입금액'];
         if (!realFee) {
             parserError(sheetName, {r: rowNum, c: '입금액'}, 'emptyCell');
             continue;
@@ -422,9 +445,9 @@ function parserOnsite(wb) {
                 parserError(sheetName, {r: rowNum, c: '등록번호'}, 'emptyCell');
                 continue;
             } else {
-                rowData[prevId]['총입금액'] += totalFee;
-                rowData[prevId]['총수수료'] += tax;
-                rowData[prevId]['실입금액'] += realFee;
+                rawData[prevId]['총입금액'] += totalFee;
+                rawData[prevId]['총수수료'] += tax;
+                rawData[prevId]['실입금액'] += realFee;
                 continue;
             }
         }
@@ -443,7 +466,13 @@ function parserOnsite(wb) {
     }
 }
 
-function addData(id, totalFee, tax, realFee, PGType, currency, sheetName, cellPos) {
+function addData(sheetName, cellPos, data, row) {
+	let id = data.id;
+	let totalFee = data.totalFee;
+	let tax = data.tax;
+	let realFee = data.realFee;
+	let PGType = data.PGType
+	let currency = data.currency;
 	if (totalFee >= 0) {
 		// 결제 내역
 		if (id in rawData) { 
@@ -473,6 +502,7 @@ function addData(id, totalFee, tax, realFee, PGType, currency, sheetName, cellPo
 			tmp['실입금액'] = realFee;
 			tmp['PG사'] = PGType;
 			tmp['환율'] = currency;
+			tmp['row'] = row;
 			cancelData[id].push(tmp); 
 		} else {
 			cancelData[id] = [];
