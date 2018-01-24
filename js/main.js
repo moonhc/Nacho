@@ -90,6 +90,9 @@ function startProcessing(intervalID) {
 		parserFunc(wb);
 	}
 
+    let rawWB = createRawDataExcel(rawData);
+    rawWB.then(function (workbook) {downloadExcel(workbook, 'data.xlsx')});
+
 	// Make a cancel sheet
 	let = promiseWB = createCancelExcel(cancelData);
 	promiseWB.then(function (workbook) {downloadExcel(workbook, '취소내역.xlsx')});	
