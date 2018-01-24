@@ -90,6 +90,10 @@ function startProcessing(intervalID) {
 		parserFunc(wb);
 	}
 
+	// Make a cancel sheet
+	promiseWB = createCancelExcel(cancelData);
+	promiseWB.then(function (workbook) {downloadExcel(workbook, 'out.xlsx')});	
+
 	setTimeout(
 		function () { 
 			statusIdx = 2;

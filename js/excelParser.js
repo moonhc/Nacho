@@ -60,6 +60,11 @@ function parserError(sheetName, cellPos, errorType) {
 				`[${errorType}] 시트: ${sheetName} 위치: ${cellPos.r}, ${cellPos.c}
 								취소 내역에 대한 결제 내역을 찾을 수 없습니다.`);
 			break;
+		case 'cancelError':
+			errLog.push(
+				`[${errorType}] 시트: ${sheetName} 위치: ${cellPos.r}, ${cellPos.c}
+								취소 내역이 다른 결제사의 결제 내역의 등록번호와 일치합니다.`);
+			break;
 		default:
 			errLog.push(
 				`[${errorType}] 시트: ${sheetName} 위치: ${cellPos.r}, ${cellPos.c}
@@ -335,7 +340,7 @@ function parserEximbay(wb) {
 
 		addData(
 			sheetName, 
-			{r:rowNum, c:'상품명'},
+			{r:rowNum, c:'등록번호'},
 			{id:id, totalFee:totalFee, tax:(tax1+tax2)*-1, 
 				realFee:realFee*currency, PGType:PGType, currency:currency},
 			row);
@@ -486,6 +491,7 @@ function addData(sheetName, cellPos, data, row) {
 		tmp['실입금액'] = realFee;
 		tmp['PG사'] = PGType;
 		tmp['환율'] = currency;
+		tmp['row'] = row;
 
 		rawData[id] = tmp;
 	} else if (totalFee < 0) {
@@ -496,28 +502,43 @@ function addData(sheetName, cellPos, data, row) {
 		}
 
 		if (id in cancelData) {
-			let tmp = {};
-			tmp['총입금액'] = totalFee;
-			tmp['총수수료'] = tax;
-			tmp['실입금액'] = realFee;
-			tmp['PG사'] = PGType;
-			tmp['환율'] = currency;
-			tmp['row'] = row;
-			cancelData[id].push(tmp); 
+			if (cancelData[id].PGType == PGType) {
+				let tmp = {};
+				tmp['총입금액'] = totalFee;
+				tmp['총수수료'] = tax;
+				tmp['실입금액'] = realFee;
+				tmp['PG사'] = PGType;
+				tmp['환율'] = currency;
+				tmp['row'] = row;
+				cancelData[id].push(tmp);
+			} else {
+				parserError(sheetName, cellPos, 'cancelError');
+				return;
+			}
 		} else {
-			cancelData[id] = [];
+			let originData = JSON.parse(JSON.stringify(rawData[id]));
 
-			// Original Data
-			cancelData[id].push( JSON.parse(JSON.stringify(rawData[id])) );
+			if (originData['PG사'] == PGType) {
+				cancelData[id] = [];
+				
+				cancelData[id]['PGType'] = PGType;
 
-			// Cancel Data
-			let tmp = {};
-			tmp['총입금액'] = totalFee;
-			tmp['총수수료'] = tax;
-			tmp['실입금액'] = realFee;
-			tmp['PG사'] = PGType;
-			tmp['환율'] = currency;
-			cancelData[id].push(tmp); 
+				// Original Data
+				cancelData[id].push(originData);
+
+				// Cancel Data
+				let tmp = {};
+				tmp['총입금액'] = totalFee;
+				tmp['총수수료'] = tax;
+				tmp['실입금액'] = realFee;
+				tmp['PG사'] = PGType;
+				tmp['환율'] = currency;
+				tmp['row'] = row;
+				cancelData[id].push(tmp); 
+			} else {
+				parserError(sheetName, cellPos, 'cancelError');
+				return;
+			}
 		}
 
 		rawData[id]['총입금액'] += totalFee;

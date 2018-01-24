@@ -1,7 +1,8 @@
-function createExcel(cancelData) {
+function createCancelExcel(cancelData) {
 	return createWorkbook().then(
 		function (workbook) {
 			createCancelSheets(workbook, cancelData);
+			return workbook;
 		});
 }
 
@@ -11,12 +12,18 @@ function createCancelSheets(workbook, cancelData) {
 	for (let type in refinedData) {
 		let sheetName = `${type}(취소)`;
 		const sheet = workbook.addSheet(sheetName);
-		writeToSheet(sheet, refinedData[type]);
+		writeToCancelSheet(sheet, refinedData[type]);
 	}
 }
 
-function writeToSheet(sheet, data) {
-	return workbook;
+function writeToCancelSheet(sheet, data) {
+	// Write header first
+	sheet.range(1, 1, 1, data.range.maxCol)
+		.value([data.header]);
+
+	// Write data
+	sheet.range(2, 1, data.range.maxRow, data.range.maxCol)
+		.value(data.data);
 }
 
 function downloadExcel(workbook, fileName) {
@@ -41,7 +48,7 @@ function downloadExcel(workbook, fileName) {
 			a.href = url;
 			a.download = fileName;
 			a.click();
-			window.URL.revokeObjecURL(url);
+			window.URL.revokeObjectURL(url);
 			document.body.removeChild(a);
 		}).catch(
 		function (err) {
@@ -49,12 +56,32 @@ function downloadExcel(workbook, fileName) {
 		});
 }
 
-function findSheetByName(workbook, sheetName) {
+function findSheetByType(workbook, PGType) {
 	return;
 }
 
 function refineCancelData(cancelData) {
-	let refinedData;
+	let refinedData = {};
+
+	for (let id in cancelData) {
+		const cancelArray = cancelData[id];
+		const type = cancelArray.PGType;
+
+		if (!(type in refinedData)) {
+			let headers = Object.keys(cancelArray[0].row);
+
+			refinedData[type] = {
+				range: {maxRow: 1, maxCol: headers.length},
+				header: headers,
+				data: []
+			};
+		}
+
+		for (let data of cancelArray) {
+			refinedData[type].data.push(Object.values(data.row));
+			refinedData[type].range.maxRow++;
+		}
+	}
 	return refinedData;
 }
 
