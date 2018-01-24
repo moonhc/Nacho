@@ -555,6 +555,63 @@ function addData(sheetName, cellPos, data, row) {
 	}
 }
 
+function createRawDataExcel(data) {
+    return createWorkbook().then(
+        function (workbook) {
+            let mergedData = mergeToRawData(data);
+            let headers = Object.keys(mergedData[0]);
+            let outputData = {
+                range: {maxRow: 1, maxCol: headers.length},
+                header: headers,
+                data: []
+            };
+
+            console.log(mergedData);
+            for (let data in mergedData) {
+                outputData.data.push(Object.values(mergedData[data]));
+                outputData.range.maxRow++;
+            }
+            //console.log(outputData);
+
+            const sheet = workbook.addSheet('RawData');
+            //sheet.range(1, 1, 1, outputData.range.maxCol).value([outputData.header]);
+            sheet.range(1, 1, outputData.range.maxRow, outputData.range.maxCol).value(outputData.data);
+
+            return workbook;
+        });
+}
+
+function mergeToRawData(data) {
+    let sheetName = 'RawData'
+    let ws = wb.Sheets[sheetName];
+    let rowArr = XLSX.utils.sheet_to_json(ws, {header: 1, raw: true, defval: ''});
+    let rowNum = -1;
+    let output = {};
+
+    console.log(rowArr[0]);
+    rowArr[0].push('총입금액', '총수수료', '실입금액', 'PG사', '환율');
+    for (let row of rowArr) {
+        rowNum++;
+
+        let id = row[66];
+		if (!id) {
+            output[rowNum] = row;
+			continue;
+		}
+
+        let tmp = row;
+        for (let key in data[id]) {
+            if (key != 'row') {
+                tmp.push(data[id][key]);
+            }
+        }
+
+        output[rowNum] = tmp;
+    }
+
+    return output;
+}
+            
 function init() {
 	for (let type of PAYTYPE) {
 		funcName = 'parser' + type[0] + type.slice(1).toLowerCase();
