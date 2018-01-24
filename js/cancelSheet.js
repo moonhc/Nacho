@@ -56,10 +56,6 @@ function downloadExcel(workbook, fileName) {
 		});
 }
 
-function findSheetByType(workbook, PGType) {
-	return;
-}
-
 function refineCancelData(cancelData) {
 	let refinedData = {};
 

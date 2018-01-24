@@ -91,8 +91,8 @@ function startProcessing(intervalID) {
 	}
 
 	// Make a cancel sheet
-	promiseWB = createCancelExcel(cancelData);
-	promiseWB.then(function (workbook) {downloadExcel(workbook, 'out.xlsx')});	
+	let = promiseWB = createCancelExcel(cancelData);
+	promiseWB.then(function (workbook) {downloadExcel(workbook, '취소내역.xlsx')});	
 
 	setTimeout(
 		function () { 
