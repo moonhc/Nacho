@@ -593,7 +593,7 @@ function mergeToRawData(data) {
     for (let row of rowArr) {
         rowNum++;
 
-        let id = row[66];
+        let id = row[7];
 		if (!id) {
             output[rowNum] = row;
 			continue;
