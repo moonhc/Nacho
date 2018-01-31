@@ -16,9 +16,11 @@
 	<hr>
 	<h3>How To Use:</h3>
 	<ol>
-		<li><span>Upload an excel file having appropriate format.</span></li>
+		<li><span>Upload an input excel file having appropriate format.</span></li>
+		<li><span>Upload an ouput excel file for formatting.</span></li>
 		<li><span>Push the <b>Process</b> button.</span></li>
 		<li><span>If there is no error, you can download complete excel file by push <b>Download</b> button.</span></li>
+		<li><span><b>You must refresh this page when you're trying to parse new file or again</b></span></li>
 	</ol>
 	<hr>
 	<div class="container">
@@ -28,13 +30,16 @@
 	<div class="container">
 		<label for="excel">Excel Input :</label>
 		<input type="file" id="excel" class="fileUpload">
-        <label for="template">Out Put Template :</label>
+        <label for="template">Output Template :</label>
         <input type="file" id="template" class="fileUpload">
 
 		<input type="button" value="Process" class="button process">
 		<input type="button" value="Download" class="button download" disabled>
 	</div>
+	<hr>
 	<div class="container">
+		[Error logs]
+		<table></table>
 	</div>
 
 	<script type="text/javascript" src="js/xlsx.full.min.js"></script>

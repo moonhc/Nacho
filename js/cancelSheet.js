@@ -50,6 +50,7 @@ function downloadExcel(workbook, fileName) {
 			a.click();
 			window.URL.revokeObjectURL(url);
 			document.body.removeChild(a);
+			alert("Processing is complete.");
 		}).catch(
 		function (err) {
 			alert(err.message || err);

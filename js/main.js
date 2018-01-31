@@ -49,6 +49,7 @@ function downloadBtnHandler() {
 	// Check output made
 	if (outputFile) {
 		// Return ouput
+		downloadExcel(outputFile, 'output.xlsx');
 		console.log("Download complete.");
 	}
 }
@@ -113,27 +114,25 @@ function startProcessing(intervalID) {
 		let parserFunc = parserDeterminant(payType);
 		parserFunc(wb);
 	}
-    let rawWB = createRawDataExcel(rawData);
-    rawWB.then(function (workbook)
-				{downloadExcel(workbook, 'data.xlsx');
-				var output = analyze(mergedData, template);
-        		downloadExcel(output, 'output.xlsx');});
 
-	// Make a cancel sheet
-	let promiseWB = createCancelExcel(cancelData);
-	promiseWB.then(function (workbook) {downloadExcel(workbook, '취소내역.xlsx')});	
+	// Process and download
+    createRawDataSheet(template, rawData);
+    createCancelSheets(template, cancelData);
+    outputFile = analyze(mergedData, template);
+    
+    while (true) {
+    	if (outputFile) {
+    		statusIdx = 2;
+    		console.log('[STATE]', STATE[statusIdx]);
+    		statusSpan.innerText = STATE[statusIdx];
 
-	setTimeout(
-		function () { 
-			statusIdx = 2;
-			console.log('[STATE]', STATE[statusIdx]);
-			statusSpan.innerText = STATE[statusIdx];
-
-			outputFile = true;
-			downloadBtn.disabled = false;
-			clearInterval(intervalID);
-			dotSpan.innerText = '';
-		}, 1000);
+    		downloadBtn.disabled = false;
+    		clearInterval(intervalID);
+    		dotSpan.innerText = '';
+    		writeErrorLog();
+    		break;
+    	}
+    }
 }
 
 function dotProcessing() {
@@ -142,6 +141,20 @@ function dotProcessing() {
 	}
 	else {
 		dotSpan.innerText = '.';
+	}
+}
+
+function writeErrorLog() {
+	if (!errLog) return;
+	else {
+		let table = document.querySelector('table')
+
+		let data = ``;
+		for (let log of errLog) {
+			data += `<tr><td>${log}</td></tr>`;
+		}
+
+		table.innerHTML = data;
 	}
 }
 

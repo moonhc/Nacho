@@ -2,8 +2,6 @@
 // let XlsxPopulate = require('xlsx-populate')
 // let errLog = []
 
-let output = null
-let errRow = {}
 
 // Parser functions
 function parserErrorForProcessing(sheetName, regNum, errorType) {
@@ -121,7 +119,8 @@ function analyze(input, output) {
         }
         return fees
     }
-
+    
+    let errRow = {};
     let outputS = output.sheet(0);
     let filters = getFilters();
     let totalFilters = getTotalFilters();

@@ -558,50 +558,29 @@ function addData(sheetName, cellPos, data, row) {
 function createRawDataExcel(data) {
     return createWorkbook().then(
         function (workbook) {
-            let mergedData = mergeToRawData(data);
-            let headers = Object.keys(mergedData[0]);
-            let outputData = {
-                range: {maxRow: 1, maxCol: headers.length},
-                header: headers,
-                data: []
-            };
-
-            for (let data in mergedData) {
-                outputData.data.push(Object.values(mergedData[data]));
-                outputData.range.maxRow++;
-            }
-            //console.log(outputData);
-
-            const sheet = workbook.addSheet('RawData');
-            //sheet.range(1, 1, 1, outputData.range.maxCol).value([outputData.header]);
-            sheet.range(1, 1, outputData.range.maxRow, outputData.range.maxCol).value(outputData.data);
-
+        	createRawDataSheet(workbook, data);
             return workbook;
         });
 }
 
-function createStatDataExcel(data) {
-    return createWorkbook().then(
-        function (workbook) {
-            let headers = Object.keys(data[0]);
-            let outputData = {
-                range: {maxRow: 1, maxCol: headers.length},
-                header: headers,
-                data: []
-            };
+function createRawDataSheet(workbook, data) {
+	let mergedData = mergeToRawData(data);
+	let headers = Object.keys(mergedData[0]);
+	let outputData = {
+	    range: {maxRow: 1, maxCol: headers.length},
+	    header: headers,
+	    data: []
+	};
 
-            for (let i in data) {
-                outputData.data.push(Object.values(data[i]));
-                outputData.range.maxRow++;
-            }
-            //console.log(outputData);
+	for (let data in mergedData) {
+	    outputData.data.push(Object.values(mergedData[data]));
+	    outputData.range.maxRow++;
+	}
+	//console.log(outputData);
 
-            //sheet.range(1, 1, 1, outputData.range.maxCol).value([outputData.header]);
-            const sheet = workbook.sheet(0)
-            sheet.range(1, 1, outputData.range.maxRow, outputData.range.maxCol).value(outputData.data);
-
-            return workbook;
-        });
+	const sheet = workbook.addSheet('RawData');
+	//sheet.range(1, 1, 1, outputData.range.maxCol).value([outputData.header]);
+	sheet.range(1, 1, outputData.range.maxRow, outputData.range.maxCol).value(outputData.data);
 }
 
 function mergeToRawData(data) {
