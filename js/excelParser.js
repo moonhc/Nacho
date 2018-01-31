@@ -27,7 +27,7 @@ let PARSER = {};
 //		{총입금액USD/KRW, 총수수료(수수료+부가세)USD/KRW, 실입금액(총입금액-총 수수료)KRW, 
 //			PG사, 차수, 환율} 
 // }
-let rawData, cancelData, errLog;
+let rawData, cancelData, errLog, mergedData;
 
 // Distributor for parser
 function parserDeterminant(payType) {
@@ -566,7 +566,6 @@ function createRawDataExcel(data) {
                 data: []
             };
 
-            console.log(mergedData);
             for (let data in mergedData) {
                 outputData.data.push(Object.values(mergedData[data]));
                 outputData.range.maxRow++;
@@ -581,6 +580,30 @@ function createRawDataExcel(data) {
         });
 }
 
+function createStatDataExcel(data) {
+    return createWorkbook().then(
+        function (workbook) {
+            let headers = Object.keys(data[0]);
+            let outputData = {
+                range: {maxRow: 1, maxCol: headers.length},
+                header: headers,
+                data: []
+            };
+
+            for (let i in data) {
+                outputData.data.push(Object.values(data[i]));
+                outputData.range.maxRow++;
+            }
+            //console.log(outputData);
+
+            //sheet.range(1, 1, 1, outputData.range.maxCol).value([outputData.header]);
+            const sheet = workbook.sheet(0)
+            sheet.range(1, 1, outputData.range.maxRow, outputData.range.maxCol).value(outputData.data);
+
+            return workbook;
+        });
+}
+
 function mergeToRawData(data) {
     let sheetName = 'RawData'
     let ws = wb.Sheets[sheetName];
@@ -588,7 +611,6 @@ function mergeToRawData(data) {
     let rowNum = -1;
     let output = {};
 
-    console.log(rowArr[0]);
     rowArr[0].push('총입금액', '총수수료', '실입금액', 'PG사', '환율');
     for (let row of rowArr) {
         rowNum++;
@@ -608,6 +630,14 @@ function mergeToRawData(data) {
 
         output[rowNum] = tmp;
     }
+
+    mergedData = {}
+    for (let i=1;i<Object.keys(output).length;i++) {
+    	mergedData[i-1] = {}
+    	for (let j=0;j<output[0].length;j++) {
+    		mergedData[i-1][output[0][j]] = output[i][j]
+		}
+	}
 
     return output;
 }

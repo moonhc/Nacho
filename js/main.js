@@ -3,6 +3,8 @@ const STATE = ['WAIT', 'PROCESSING', 'DONE'];
 const rABS = typeof FileReader !== "undefined" && typeof FileReader.prototype !== "undefined" && typeof FileReader.prototype.readAsBinaryString !== "undefined";
 
 let inputFile = false;
+let templateFile = false;
+let template;
 let outputFile;
 
 let wb;
@@ -16,27 +18,30 @@ const dotSpan = document.querySelector('span.dot');
 const processBtn = document.querySelector('input.process');
 const downloadBtn = document.querySelector('input.download');
 
-const fileInput = document.querySelector('input.fileUpload');
+const fileInputData = document.querySelector('input.fileUpload[id=excel]');
+const fileInputTemp = document.querySelector('input.fileUpload[id=template]');
+
 
 processBtn.addEventListener('click', processBtnHandler);
 downloadBtn.addEventListener('click', downloadBtnHandler);
 
-fileInput.addEventListener('change', fileInputHandler);
+fileInputData.addEventListener('change', fileInputHandler);
+fileInputTemp.addEventListener('change', fileTemplateHandler);
 
 function processBtnHandler() {
 	// Check input uploaded
-	if (inputFile) {
+    if (inputFile && templateFile) {
 		// Get the excel file and start to process it
 		outputFile = false;
 		downloadBtn.disabled = true;
 		statusIdx = 1;
 		console.log('[STATE]', STATE[statusIdx]);
 		statusSpan.innerText = STATE[statusIdx];
-		let intervalID =setInterval(dotProcessing, 100);
+        let intervalID =setInterval(dotProcessing, 100);
 		startProcessing(intervalID);
 	}
 	else {
-		alert("Upload an excel file first.");
+		alert("Upload an excel file and template file first.");
 	}
 }
 
@@ -49,7 +54,7 @@ function downloadBtnHandler() {
 }
 
 function fileInputHandler(e) {
-	let file = fileInput.files[0];
+	let file = fileInputData.files[0];
 
 	if (fileValidation(file)) {
 		let reader = new FileReader();
@@ -69,14 +74,33 @@ function fileInputHandler(e) {
 
 }
 
+function fileTemplateHandler(e) {
+    let file = fileInputTemp.files[0];
+
+    if (fileValidation(file)) {
+        let reader = new FileReader();
+        templateFile = true;
+
+        XlsxPopulate.fromDataAsync(file)
+            .then(function (workbook) {
+            	template = workbook
+            });
+    }
+    else {
+        alert("The file is not a supported format.");
+    }
+
+}
+
 function fileValidation(file) {
-	let valSet = ['.xlsx', '.xls'];
+	if(file) {
+        let valSet = ['.xlsx', '.xls'];
 
-	for (let val of valSet) {
-		if (file.name.match(val))
-			return true;
-	}
-
+        for (let val of valSet) {
+            if (file.name.match(val))
+                return true;
+        }
+    }
 	return false;
 }
 
@@ -89,12 +113,14 @@ function startProcessing(intervalID) {
 		let parserFunc = parserDeterminant(payType);
 		parserFunc(wb);
 	}
-
     let rawWB = createRawDataExcel(rawData);
-    rawWB.then(function (workbook) {downloadExcel(workbook, 'data.xlsx')});
+    rawWB.then(function (workbook)
+				{downloadExcel(workbook, 'data.xlsx');
+				var output = analyze(mergedData, template);
+        		downloadExcel(output, 'output.xlsx');});
 
 	// Make a cancel sheet
-	let = promiseWB = createCancelExcel(cancelData);
+	let promiseWB = createCancelExcel(cancelData);
 	promiseWB.then(function (workbook) {downloadExcel(workbook, '취소내역.xlsx')});	
 
 	setTimeout(
