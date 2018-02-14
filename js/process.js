@@ -119,6 +119,39 @@ function analyze(input, output) {
         }
         return fees
     }
+
+    function makeExtraStat() {
+        let extraStatLen = Object.keys(extraStat).length
+        outputS.cell(outputR, 1).value("통계")
+        outputS.range(outputR, 1, outputR + extraStatLen, 1).merged(true)
+        outputS.range(outputR, 1, outputR + extraStatLen, 1).style({"horizontalAlignment":"center",
+                                                                    "verticalAlignment":"center",
+                                                                    "border":"thick"})
+        outputS.cell(outputR, 2).style({"topBorder":"thick"})
+        outputS.cell(outputR, 3).style({"topBorder":"thick",
+                                        "topBorderColor":"ff0000"})
+        for(let pgc of Object.keys(extraStat)) {
+            outputS.cell(outputR, 3).style({"leftBorder":"thick",
+                                            "leftBorderColor":"ff0000",
+                                            "rightBorder":"thick",
+                                            "rightBorderColor":"ff0000",
+                                            "bottomBorder":"thin"})
+            outputS.cell(outputR, 2).style({"bottomBorder":"thin"})
+            outputS.cell(outputR, 2).value(pgc)
+            outputS.cell(outputR, 3).value(extraStat[pgc])
+            outputR += 1
+        }
+        outputS.cell(outputR, 2).value("합계")
+        outputS.cell(outputR, 3).formula("=SUM("+outputS.cell(outputR - extraStatLen, 3).address()+":"+outputS.cell(outputR - 1, 3).address()+")")
+        outputS.cell(outputR, 2).style({"bottomBorder":"thick"})
+        outputS.cell(outputR, 3).style({"leftBorder":"thick",
+                                        "leftBorderColor":"ff0000",
+                                        "rightBorder":"thick",
+                                        "rightBorderColor":"ff0000",
+                                        "bottomBorder":"thick",
+                                        "bottomBorderColor":"ff0000"
+        })
+    }
     
     let errRow = {};
     let outputS = output.sheet(0);
@@ -128,6 +161,7 @@ function analyze(input, output) {
     let data = input;
     // let data = XLSX.utils.sheet_to_json(input)
     let fees = getFees()
+    let extraStat = {}
 
     while(outputS.cell(outputR, 1).value() !== "Total") {
         let stat = getInitStat();
@@ -164,7 +198,15 @@ function analyze(input, output) {
                 let sumFee = 0
                 let feeKeys = Object.keys(fees)
                 let picked = []
+                let pgCompany = curRow["PG사"]
                 // console.log(curRow["Num"], curRow["실입금액"])
+
+                if(pgCompany in extraStat) {
+                    extraStat[pgCompany] += parseFloat(curRow["실입금액"])
+                } else {
+                    extraStat[pgCompany] = parseFloat(curRow["실입금액"])
+                }
+
                 for(let i=0;i<feeKeys.length;i++) {
                     let curRowKeys = Object.keys(curRow)
                     let tmpKeys = feeKeys[i].split(",")
@@ -280,6 +322,9 @@ function analyze(input, output) {
                     break;
                 } else if(outputS.cell(2, c).value() === totalFilters[item]) {
                     let tmp = parseInt(outputS.cell(outputR, c).value());
+                    if(outputS.cell(1, c).value() == "Card" && outputS.cell(2, c).value() == "KRW") {
+                        tmp = parseInt(outputS.cell(outputR, c+1).value())
+                    }
                     if(tmp)
                         s += tmp
                 }
@@ -297,5 +342,9 @@ function analyze(input, output) {
         outputS.cell(outputR, c).formula("=SUM("+outputS.cell(3,c).address()+":"+outputS.cell(outputR-1,c).address()+")")
         c += 1;
     }
+
+    outputR += 3
+    makeExtraStat()
+
     return output
 }
