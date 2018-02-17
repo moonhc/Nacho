@@ -152,6 +152,39 @@ function analyze(input, output) {
                                         "bottomBorderColor":"ff0000"
         })
     }
+
+    function makeBankStat() {
+        let extraStatLen = Object.keys(extraStat).length
+        outputS.cell(outputR, 1).value("통장")
+        outputS.range(outputR, 1, outputR + extraStatLen, 1).merged(true)
+        outputS.range(outputR, 1, outputR + extraStatLen, 1).style({"horizontalAlignment":"center",
+                                                                    "verticalAlignment":"center",
+                                                                    "border":"thick"})
+        outputS.cell(outputR, 2).style({"topBorder":"thick"})
+        outputS.cell(outputR, 3).style({"topBorder":"thick",
+                                        "topBorderColor":"ff0000"})
+        for(let pgc of Object.keys(extraStat)) {
+            outputS.cell(outputR, 3).style({"leftBorder":"thick",
+                                            "leftBorderColor":"ff0000",
+                                            "rightBorder":"thick",
+                                            "rightBorderColor":"ff0000",
+                                            "bottomBorder":"thin"})
+            outputS.cell(outputR, 2).style({"bottomBorder":"thin"})
+            outputS.cell(outputR, 2).value(pgc)
+            outputS.cell(outputR, 3).value(bankData[pgc])  // From excelParser.js
+            outputR += 1
+        }
+        outputS.cell(outputR, 2).value("합계")
+        outputS.cell(outputR, 3).formula("=SUM("+outputS.cell(outputR - extraStatLen, 3).address()+":"+outputS.cell(outputR - 1, 3).address()+")")
+        outputS.cell(outputR, 2).style({"bottomBorder":"thick"})
+        outputS.cell(outputR, 3).style({"leftBorder":"thick",
+                                        "leftBorderColor":"ff0000",
+                                        "rightBorder":"thick",
+                                        "rightBorderColor":"ff0000",
+                                        "bottomBorder":"thick",
+                                        "bottomBorderColor":"ff0000"
+        })
+    }
     
     let errRow = {};
     let outputS = output.sheet(0);
@@ -345,6 +378,9 @@ function analyze(input, output) {
 
     outputR += 3
     makeExtraStat()
+
+    outputR += 3
+    makeBankStat()
 
     return output
 }

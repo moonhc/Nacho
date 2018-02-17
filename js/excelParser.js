@@ -27,7 +27,7 @@ let PARSER = {};
 //		{총입금액USD/KRW, 총수수료(수수료+부가세)USD/KRW, 실입금액(총입금액-총 수수료)KRW, 
 //			PG사, 차수, 환율} 
 // }
-let rawData, cancelData, errLog, mergedData;
+let rawData, cancelData, errLog, mergedData, bankData;
 
 // Distributor for parser
 function parserDeterminant(payType) {
@@ -359,14 +359,13 @@ function parserTransfer(wb) {
         rowNum++;
 
         let id = row['등록번호'];
-        if (!id) {
+        let origin = row['출처'];
+        if (!id && !origin) {
             continue;
         } else if (id in rawData) {
             parserError(sheetName, {r: rowNum, c: '등록번호'}, 'dupNo');
             continue;
         }
-
-        let tmp = {};
 
         let totalFee = row['맡기신금액'];
         if (!totalFee) {
@@ -380,16 +379,27 @@ function parserTransfer(wb) {
         }
         totalFee = parseFloat(totalFee);
 
-        tmp['총입금액'] = totalFee;
+        if (id) {
+		    let tmp = {};
 
-        tmp['총수수료'] = 0;
+		    tmp['총입금액'] = totalFee;
 
-        tmp['실입금액'] = totalFee;
+		    tmp['총수수료'] = 0;
 
-        let PGType = '계좌이체';
-        tmp['PG사'] = PGType;
+		    tmp['실입금액'] = totalFee;
 
-        rawData[id] = tmp;
+		    let PGType = '계좌이체';
+		    tmp['PG사'] = PGType;
+
+		    rawData[id] = tmp;
+		}
+		else if (origin) {
+	        if (row['출처'] in bankData) {
+	        	bankData[row['출처']] += totalFee;
+	        } else if (!row['출처']) {
+	        	bankData[row['출처']] = totalFee;
+	        }
+	    }
     }
 }
 
@@ -630,6 +640,7 @@ function init() {
 	rawData = {};
 	cancelData = {};
 	errLog = [];
+	bankData = {};
 }
 
 init();
