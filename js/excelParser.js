@@ -394,10 +394,11 @@ function parserTransfer(wb) {
 		    rawData[id] = tmp;
 		}
 		else if (origin) {
-	        if (row['출처'] in bankData) {
-	        	bankData[row['출처']] += totalFee;
-	        } else if (!row['출처']) {
-	        	bankData[row['출처']] = totalFee;
+			console.log(origin);
+	        if (origin in bankData) {
+	        	bankData[origin] += totalFee;
+	        } else {
+	        	bankData[origin] = totalFee;
 	        }
 	    }
     }
