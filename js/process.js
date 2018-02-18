@@ -338,14 +338,18 @@ function analyze(input, output) {
     let ck = searchHeadersStat(["Cash","KRW"]);
     let cu = searchHeadersStat(["Cash","USD"])+1;
     for(let i=3;i<outputR;i++) {
-        extraStat["현장현금(KRW)"] += outputS.cell(i, ck).value()
-        extraStat["현장현금(USD)"] += outputS.cell(i, cu).value()
+        let tmp1 = parseFloat(outputS.cell(i, ck).value());
+        let tmp2 = parseFloat(outputS.cell(i, cu).value());
+        if(tmp1)
+            extraStat["현장현금(KRW)"] += tmp1;
+        if(tmp2)
+            extraStat["현장현금(USD)"] += tmp2;
     }
 
-    outputR += 3
+    outputR += 3;
     makeExtraStat("통계", extraStat);
 
-    outputR += 3
+    outputR += 3;
     makeExtraStat("통장", bankData);
 
     return output;
