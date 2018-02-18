@@ -38,8 +38,8 @@ function parserErrorForProcessing(sheetName, regNum, errorType) {
 // let rawDataSheet = workbook.Sheets["RawData"];
 
 function getInitStat() {
-    return {"KRW":{"Card":{"count":0, "KRW":0, "실입금액":0}, "Transfer":{"count":0, "KRW":0}, "Cash":{"count":0, "KRW":0}},
-        "USD":{"Card":{"count":0, "USD":0, "실입금액":0}, "Transfer":{"count":0, "USD":0, "실입금액":0}, "Cash":{"count":0, "USD":0, "실입금액":0}}};
+    return {"KRW":{"Card":{"count":0, "KRW":0, "실입금액":0}, "Transfer":{"count":0, "KRW":0}},
+        "USD":{"Card":{"count":0, "USD":0, "실입금액":0}, "Transfer":{"count":0, "USD":0, "실입금액":0}}};
 }
 
 function analyze(input, output) {
@@ -65,22 +65,13 @@ function analyze(input, output) {
         return -1;
     }
 
-    function searchHeadersRaw(header) {
-        let c = 1
-        while(outputS.cell(1, c).value()) {
-            if(outputS.cell(1, c).value() === header) {
-                return c
-            }
-            c += 1
-        }
-        return -1;
-    }
-
     function getFilters() {
         let c = 1;
         let filters = []
         while (outputS.cell(1, c).value() === undefined) {
-            filters.push(outputS.cell(2,c).value());
+            let filter = outputS.cell(2,c).value();
+            if(filter !== "Cash")
+                filters.push(filter);
             c += 1;
         }
         return filters;
@@ -120,9 +111,9 @@ function analyze(input, output) {
         return fees
     }
 
-    function makeExtraStat() {
+    function makeExtraStat(title, data) {
         let extraStatLen = Object.keys(extraStat).length
-        outputS.cell(outputR, 1).value("통계")
+        outputS.cell(outputR, 1).value(title)
         outputS.range(outputR, 1, outputR + extraStatLen, 1).merged(true)
         outputS.range(outputR, 1, outputR + extraStatLen, 1).style({"horizontalAlignment":"center",
                                                                     "verticalAlignment":"center",
@@ -138,7 +129,7 @@ function analyze(input, output) {
                                             "bottomBorder":"thin"})
             outputS.cell(outputR, 2).style({"bottomBorder":"thin"})
             outputS.cell(outputR, 2).value(pgc)
-            outputS.cell(outputR, 3).value(extraStat[pgc])
+            outputS.cell(outputR, 3).value(data[pgc])
             outputR += 1
         }
         outputS.cell(outputR, 2).value("합계")
@@ -153,39 +144,7 @@ function analyze(input, output) {
         })
     }
 
-    function makeBankStat() {
-        let extraStatLen = Object.keys(extraStat).length
-        outputS.cell(outputR, 1).value("통장")
-        outputS.range(outputR, 1, outputR + extraStatLen, 1).merged(true)
-        outputS.range(outputR, 1, outputR + extraStatLen, 1).style({"horizontalAlignment":"center",
-                                                                    "verticalAlignment":"center",
-                                                                    "border":"thick"})
-        outputS.cell(outputR, 2).style({"topBorder":"thick"})
-        outputS.cell(outputR, 3).style({"topBorder":"thick",
-                                        "topBorderColor":"ff0000"})
-        for(let pgc of Object.keys(extraStat)) {
-            outputS.cell(outputR, 3).style({"leftBorder":"thick",
-                                            "leftBorderColor":"ff0000",
-                                            "rightBorder":"thick",
-                                            "rightBorderColor":"ff0000",
-                                            "bottomBorder":"thin"})
-            outputS.cell(outputR, 2).style({"bottomBorder":"thin"})
-            outputS.cell(outputR, 2).value(pgc)
-            outputS.cell(outputR, 3).value(bankData[pgc])  // From excelParser.js
-            outputR += 1
-        }
-        outputS.cell(outputR, 2).value("합계")
-        outputS.cell(outputR, 3).formula("=SUM("+outputS.cell(outputR - extraStatLen, 3).address()+":"+outputS.cell(outputR - 1, 3).address()+")")
-        outputS.cell(outputR, 2).style({"bottomBorder":"thick"})
-        outputS.cell(outputR, 3).style({"leftBorder":"thick",
-                                        "leftBorderColor":"ff0000",
-                                        "rightBorder":"thick",
-                                        "rightBorderColor":"ff0000",
-                                        "bottomBorder":"thick",
-                                        "bottomBorderColor":"ff0000"
-        })
-    }
-    
+
     let errRow = {};
     let outputS = output.sheet(0);
     let filters = getFilters();
@@ -199,7 +158,7 @@ function analyze(input, output) {
     while(outputS.cell(outputR, 1).value() !== "Total") {
         let stat = getInitStat();
 
-        let curRegFee = parseInt(outputS.cell(outputR, filters.length+1).value())
+        let curRegFee = parseInt(outputS.cell(outputR, filters.length+1).value());
 
         let additional = false;
         let tmp = {};
@@ -221,59 +180,58 @@ function analyze(input, output) {
         while(curRow["Num"]) {
             if(outputR === 3) {
                 if (errRow[curRow["Num"]] !== undefined && errRow[curRow["Num"]].indexOf("dupNum")) {
-                    parserErrorForProcessing("RawData", curRow["Num"], "dupNum")
-                    errRow[curRow["Num"]].push("dupNum")
+                    parserErrorForProcessing("RawData", curRow["Num"], "dupNum");
+                    errRow[curRow["Num"]].push("dupNum");
                 } else if (errRow[curRow["Num"]] === undefined) {
-                    errRow[curRow["Num"]] = []
+                    errRow[curRow["Num"]] = [];
                 }
             }
             if(parseFloat(curRow["실입금액"]) && parseFloat(curRow["실입금액"]) > 0) {
-                let sumFee = 0
-                let feeKeys = Object.keys(fees)
-                let picked = []
-                let pgCompany = curRow["PG사"]
-                // console.log(curRow["Num"], curRow["실입금액"])
+                let sumFee = 0;
+                let feeKeys = Object.keys(fees);
+                let picked = [];
+                let pgCompany = curRow["PG사"];
 
                 if(pgCompany in extraStat) {
-                    extraStat[pgCompany] += parseFloat(curRow["실입금액"])
+                    extraStat[pgCompany] += parseFloat(curRow["실입금액"]);
                 } else {
-                    extraStat[pgCompany] = parseFloat(curRow["실입금액"])
+                    extraStat[pgCompany] = parseFloat(curRow["실입금액"]);
                 }
 
                 for(let i=0;i<feeKeys.length;i++) {
-                    let curRowKeys = Object.keys(curRow)
-                    let tmpKeys = feeKeys[i].split(",")
+                    let curRowKeys = Object.keys(curRow);
+                    let tmpKeys = feeKeys[i].split(",");
                     if(tmpKeys.length > 1) {
                         let find = Array.apply(null, {length: tmpKeys.length}).map(function (x) {
-                            return false
+                            return false;
                         })
                         for (let k = 0; k < tmpKeys.length; k++) {
                             for (let j = 0; j < curRowKeys.length; j++) {
                                 if (curRow[curRowKeys[j]] === tmpKeys[k]) {
-                                    find[k] = true
-                                    break
+                                    find[k] = true;
+                                    break;
                                 }
                             }
                         }
                         if(find.reduce((prev, curr)=> prev && curr)) {
-                            picked.push(feeKeys[i])
-                            sumFee += fees[feeKeys[i]]
+                            picked.push(feeKeys[i]);
+                            sumFee += fees[feeKeys[i]];
                         }
                     } else {
-                        tmpKeys = feeKeys[i].split(" ")
+                        tmpKeys = feeKeys[i].split(" ");
                         for(let j=0;j<curRowKeys.length;j++) {
-                            let find = true
+                            let find = true;
                             for(let k=0;k<tmpKeys.length;k++) {
                                if(curRowKeys[j].indexOf(tmpKeys[k]) === -1) {
-                                   find = false
-                                   break
+                                   find = false;
+                                   break;
                                }
                            }
                            if(find) {
-                               let count = parseInt(curRow[curRowKeys[j]]) ? parseInt(curRow[curRowKeys[j]]) : 0
-                               sumFee += count*fees[feeKeys[i]]
-                               picked.push(feeKeys[i])
-                               break
+                               let count = parseInt(curRow[curRowKeys[j]]) ? parseInt(curRow[curRowKeys[j]]) : 0;
+                               sumFee += count*fees[feeKeys[i]];
+                               picked.push(feeKeys[i]);
+                               break;
                            }
                         }
                     }
@@ -281,28 +239,27 @@ function analyze(input, output) {
 
                 if((curRow["Currency"] === "USD" && curRow["환율"] === undefined && curRow["Pay Method"] !== "Transfer")
                 || curRow["Currency"] === "KRW" && curRow["환율"] !== undefined) {
-                    parserErrorForProcessing("RawData", curRow["Num"], "currencyInconsistency")
+                    parserErrorForProcessing("RawData", curRow["Num"], "currencyInconsistency");
                 }
 
                 if(additional) {
                     let t_key = Object.keys(curRow)
                         .filter(function(x) {
                             return conditions.map(function(c) {return x.indexOf(c) !== -1})
-                                        .reduce((prev, curr) => prev && curr)})[0]
-                    let count = parseInt(curRow[t_key]) ? parseInt(curRow[t_key]) : 0
+                                        .reduce((prev, curr) => prev && curr)})[0];
+                    let count = parseInt(curRow[t_key]) ? parseInt(curRow[t_key]) : 0;
 
-                    let tFee = count * curRegFee
+                    let tFee = count * curRegFee;
 
                     stat[curRow["Currency"]][curRow["Pay Method"]]["count"] += count;
                     if (curRow["Pay Method"] === "Card" || curRow["Currency"] === "USD") {
-                        // To do : 실입금액 and 입금액(USD)
-                        stat[curRow["Currency"]][curRow["Pay Method"]]["실입금액"] += parseFloat(curRow["실입금액"]) * (tFee/sumFee)
+                        stat[curRow["Currency"]][curRow["Pay Method"]]["실입금액"] += parseFloat(curRow["실입금액"]) * (tFee/sumFee);
                         if(outputR === 3) {
-                            let rate = parseFloat(curRow["환율"]) ? parseFloat(curRow["환율"]) : 1100
-                            let shouldGet = sumFee * rate
+                            let rate = parseFloat(curRow["환율"]) ? parseFloat(curRow["환율"]) : 1100;
+                            let shouldGet = sumFee * rate;
                             if (abs(shouldGet - parseInt(curRow["실입금액"])) > shouldGet * 0.1 && errRow[curRow["Num"]].indexOf("depositError") === -1) {
-                                parserErrorForProcessing("RawData", curRow["Num"], "depositError")
-                                errRow[curRow["Num"]].push("depositError")
+                                parserErrorForProcessing("RawData", curRow["Num"], "depositError");
+                                errRow[curRow["Num"]].push("depositError");
                             }
                         }
                     }
@@ -317,13 +274,13 @@ function analyze(input, output) {
 
                         if (curRow["Pay Method"] === "Card" || curRow["Currency"] === "USD") {
                             // To do : 실입금액 and 입금액(USD)
-                            stat[curRow["Currency"]][curRow["Pay Method"]]["실입금액"] += parseFloat(curRow["실입금액"]) * (curRegFee/sumFee)
+                            stat[curRow["Currency"]][curRow["Pay Method"]]["실입금액"] += parseFloat(curRow["실입금액"]) * (curRegFee/sumFee);
                             if(outputR === 3) {
-                                let rate = parseFloat(curRow["환율"]) ? parseFloat(curRow["환율"]) : 1100
-                                let shouldGet = sumFee * rate
+                                let rate = parseFloat(curRow["환율"]) ? parseFloat(curRow["환율"]) : 1100;
+                                let shouldGet = sumFee * rate;
                                 if (abs(shouldGet - parseInt(curRow["실입금액"])) > shouldGet * 0.1 && errRow[curRow["Num"]].indexOf("depositError") === -1) {
-                                    parserErrorForProcessing("RawData", curRow["Num"], "depositError")
-                                    errRow[curRow["Num"]].push("depositError")
+                                    parserErrorForProcessing("RawData", curRow["Num"], "depositError");
+                                    errRow[curRow["Num"]].push("depositError");
                                 }
                             }
                         }
@@ -346,7 +303,7 @@ function analyze(input, output) {
             }
         }
         for(let item in totalFilters) {
-            let t_idx = searchHeadersStat(["총합계", totalFilters[item]])
+            let t_idx = searchHeadersStat(["총합계", totalFilters[item]]);
             let c = filters.length + 3;
             let s = 0;
             while(true) {
@@ -356,10 +313,10 @@ function analyze(input, output) {
                 } else if(outputS.cell(2, c).value() === totalFilters[item]) {
                     let tmp = parseInt(outputS.cell(outputR, c).value());
                     if(outputS.cell(1, c).value() == "Card" && outputS.cell(2, c).value() == "KRW") {
-                        tmp = parseInt(outputS.cell(outputR, c+1).value())
+                        tmp = parseInt(outputS.cell(outputR, c+1).value());
                     }
                     if(tmp)
-                        s += tmp
+                        s += tmp;
                 }
                 c += 1;
             }
@@ -372,15 +329,24 @@ function analyze(input, output) {
     while(true) {
         if(outputS.cell(2, c).value() === undefined)
             break;
-        outputS.cell(outputR, c).formula("=SUM("+outputS.cell(3,c).address()+":"+outputS.cell(outputR-1,c).address()+")")
+        outputS.cell(outputR, c).formula("=SUM("+outputS.cell(3,c).address()+":"+outputS.cell(outputR-1,c).address()+")");
         c += 1;
+    }
+    extraStat["현장현금(KRW)"] = 0;
+    extraStat["현장현금(USD)"] = 0;
+
+    let ck = searchHeadersStat(["Cash","KRW"]);
+    let cu = searchHeadersStat(["Cash","USD"])+1;
+    for(let i=3;i<outputR;i++) {
+        extraStat["현장현금(KRW)"] += outputS.cell(i, ck).value()
+        extraStat["현장현금(USD)"] += outputS.cell(i, cu).value()
     }
 
     outputR += 3
-    makeExtraStat()
+    makeExtraStat("통계", extraStat);
 
     outputR += 3
-    makeBankStat()
+    makeExtraStat("통장", bankData);
 
-    return output
+    return output;
 }
