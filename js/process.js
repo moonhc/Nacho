@@ -192,10 +192,12 @@ function analyze(input, output) {
                 let picked = [];
                 let pgCompany = curRow["PG사"];
 
-                if(pgCompany in extraStat) {
-                    extraStat[pgCompany] += parseFloat(curRow["실입금액"]);
-                } else {
-                    extraStat[pgCompany] = parseFloat(curRow["실입금액"]);
+                if(outputR == 3) {
+                    if (pgCompany in extraStat) {
+                        extraStat[pgCompany] += parseFloat(curRow["실입금액"]);
+                    } else {
+                        extraStat[pgCompany] = parseFloat(curRow["실입금액"]);
+                    }
                 }
 
                 for(let i=0;i<feeKeys.length;i++) {
