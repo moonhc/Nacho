@@ -342,7 +342,7 @@ function parserEximbay(wb) {
 			sheetName, 
 			{r:rowNum, c:'등록번호'},
 			{id:id, totalFee:totalFee, tax:(tax1+tax2)*-1, 
-				realFee:realFee*currency, PGType:PGType, currency:currency},
+				realFee:parseInt(realFee*currency), PGType:PGType, currency:currency},
 			row);
 	}
 }
