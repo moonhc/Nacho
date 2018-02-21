@@ -393,8 +393,7 @@ function parserTransfer(wb) {
 
 		    rawData[id] = tmp;
 		}
-		else if (origin) {
-			console.log(origin);
+		if (origin) {
 	        if (origin in bankData) {
 	        	bankData[origin] += totalFee;
 	        } else {
